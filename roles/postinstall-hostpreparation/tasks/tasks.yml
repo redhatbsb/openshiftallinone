@@ -1,0 +1,150 @@
+- name:  Instala pacotes necessários
+  yum:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - wget 
+    - git 
+    - net-tools 
+    - bind-utils 
+    - yum-utils 
+    - iptables-services 
+    - bridge-utils 
+    - bash-completion 
+    - kexec-tools 
+    - sos 
+    - psacct
+    - NetworkManager
+    - centos-release-openshift-origin311
+    - nfs-utils
+
+- name: Habilita network manager
+  service:
+   name: NetworkManager
+   state: started
+   enabled: yes
+
+- name: Instala epel
+  yum:
+    name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    state: present
+
+- name: Instala Ansible
+  yum:
+   name: ansible
+   state: latest
+  #shell: "yum -y --enablerepo=epel install ansible pyOpenSSL"
+ # shell: "sudo yum install -y python-pip python-devel python && sudo pip install --upgrade pip && yum -y remove ansible && sudo pip install ansible==2.7.9"
+
+- name: Clona Git Ansible Installer
+  shell: "git clone https://github.com/openshift/openshift-ansible && cd openshift-ansible && git checkout release-3.11"
+
+- name: Clona utilitarios ansible
+  shell: "git clone https://github.com/redhatbsb/ocp-playbooks.git"
+
+- name: "Troca device do docker t2 {{ machine_type_node }}"
+  lineinfile:
+   path: /home/centos/ocp-playbooks/openshift/docker-storage-setup
+   regexp: "^DEVS="
+   line: "DEVS=/dev/xvdb"
+  when: machine_type_node == "t2.2xlarge"
+
+- name: Troca device do docker t3
+  lineinfile:
+   path: /home/centos/ocp-playbooks/openshift/docker-storage-setup
+   regexp: "^DEVS="
+   line: "DEVS=/dev/nvme1n1"
+  when: machine_type_node == "t3.2xlarge"
+
+
+- name: Copia chave
+  copy:
+   src: /home/luciano/tf/aws/aws2.pem
+   dest: /home/centos/.ssh/id_rsa
+   owner: centos
+   mode: 0400
+
+- name: Cria diretorio /etc/ansible
+  file:
+    path: /etc/ansible
+    state: directory
+    owner: centos
+    mode: 0755
+
+- name: Copia hosts
+  template:
+    src: "{{ role_path }}/files/hosts.j2" 
+    dest: /etc/ansible/hosts
+    owner: centos
+
+- name: Copia ansible.cfg
+  copy:
+   src: "{{ role_path }}/files/ansible.cfg"
+   dest: /etc/ansible/ansible.cfg
+   owner: centos
+
+- name: Instala docker
+  shell: "cd /home/centos/ocp-playbooks/openshift/ && ansible-playbook /home/centos/ocp-playbooks/openshift/04-docker.yaml"
+  become: no
+
+- name: Roda Prerequisitos
+  shell: "cd /home/centos/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
+  become: no
+
+- name: Instala Openshift
+  shell: "cd /home/centos/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
+  become: no
+
+- name: Cria diretorios para PVs
+  file:
+    path: /exports/pvs
+    state: directory
+    owner: centos
+    mode: 0777  
+
+- name: Cria exports
+  copy:
+    content: '/exports *(rw,sync,no_root_squash,no_all_squash)'
+    dest: /etc/exports
+
+- name: Inicia e restarta servicos
+  service:
+   name: "{{ item }}"
+   state: started
+   enabled: yes
+  with_items:
+    - rpcbind
+    - nfs-server
+    - nfs-lock
+    - nfs-idmap
+
+- name: Cria regras de firewall
+  firewalld:
+    zone: public
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  with_items:
+    - nfs
+    - mountd
+    - rpc-bind
+
+- name: Cria 50 PVs files baseados no template
+  template:
+    src: "{{ role_path }}/files/pvnfs.j2"
+    dest: "/exports/{{ item }}.yaml"
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Cria 50 dirs para PVs
+  file:
+    path: "/exports/pvs/{{ item }}"
+    state: directory
+    mode: 0777
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Cria os 50 Pvs
+  shell: "oc create -f /exports/{{ item }}.yaml"
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Deixa superadmin como cluster-admin
+  shell: "oc adm policy add-cluster-role-to-user cluster-admin superadmin"
