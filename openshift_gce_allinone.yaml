@@ -1,0 +1,142 @@
+- name: Cria instancias Gcloud para Openshift AllinOne
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    machine_type_node: n1-standard-4
+    zone: us-east1-b
+    region: us-east1
+    image: centos-7
+    preemptible: false
+    tamanho_disco_pequeno: 40
+    tamanho_disco_grande: 100
+    tamanho_disco_adicional: 50
+    master_private_ip: ""
+    infranode_private_ip: ""
+    node1_private_ip: ""
+    user: openshiftallinone
+    tmpdata: "{{ lookup('file','{{ credentials_file }}')|from_json }}"
+
+  tasks:
+  - name: Carregando variaveis de config.yml
+    include_vars: config.yml
+
+  - name: Registra variaveis a partir do json
+    set_fact:
+      service_account_email: "{{ tmpdata.client_email }}"
+      project_id: "{{ tmpdata.project_id }}"
+
+  - name: Ver dados
+    debug: var=tmpdata.project_id
+
+  - name: Cria liberacao porta 80, 443 e 8443
+    gce_net:
+      name: default
+      fwname: "openshift-80443"
+      allowed: tcp:80,443,8443
+      state: "present"
+      service_account_email: "{{ service_account_email }}"
+      credentials_file: "{{ credentials_file }}"
+      project_id: "{{ project_id }}"
+
+  - name: "Cria ip estatico {{ user }}"
+    gce_eip:
+     service_account_email: "{{ service_account_email }}"
+     credentials_file: "{{ credentials_file }}"
+     project_id: "{{ project_id }}"
+     name: "ip-{{ user }}"
+     region: "{{ region }}"
+     state: present
+
+  - name: "Cria Disco 1 instancia {{ user }}"
+    gce_pd:
+      name: "{{ user }}disk01"
+      image: "{{ image }}"
+      size_gb: "{{ tamanho_disco_pequeno }}"
+      zone: "{{ zone }}"
+      service_account_email: "{{ service_account_email }}"
+      credentials_file: "{{ credentials_file }}"
+      project_id: "{{ project_id }}"
+
+  - name: "Cria Disco 2 instancia {{ user }}"
+    gce_pd:
+      name: "{{ user }}disk02"
+      size_gb: "{{ tamanho_disco_grande }}"
+      zone: "{{ zone }}"
+      service_account_email: "{{ service_account_email }}"
+      credentials_file: "{{ credentials_file }}"
+      project_id: "{{ project_id }}"
+
+
+  - name: "Cria Instancia {{ user }}"
+    gce:
+        instance_names: "{{ user }}"
+        machine_type: "{{ machine_type_node }}"
+        image: "{{ image }}"
+        zone: "{{ zone }}"
+        external_ip: "ip-{{ user }}"
+        tags:
+         - http-server
+         - https-server
+        service_account_email: "{{ service_account_email }}"
+        credentials_file: "{{ credentials_file }}"
+        project_id: "{{ project_id }}"
+        disks:
+        - name: "{{ user }}disk01"
+          mode: READ_WRITE
+        - name: "{{ user }}disk02"
+          mode: READ_WRITE
+
+    register: gce_node
+
+
+  - name: Salva dados no grupo de inventario... usuario
+    add_host:
+      hostname: "{{ item.public_ip }}"
+      groupname: gce_instances_ips
+    with_items: "{{ gce_node.instance_data }}"
+
+  - name: Grava IP da instancia na variavel ip_publico
+    set_fact:
+      ip_publico: "{{ item.public_ip }}"
+    with_items: "{{ gce_node.instance_data }}"
+
+  - name: Espera por SSH habilitado...
+    wait_for:
+      delay: 1
+      host: "{{ item.public_ip }}"
+      port: 22
+      state: started
+      timeout: 30
+    with_items: "{{ gce_node.instance_data }}"
+
+  - name: "Seta variaveis para proximos passos"
+    set_fact: 
+      chave_ssh_gce: "{{ chave_ssh_gce }}"
+      usuario_ssh_gce: "{{ usuario_ssh_gce }}"
+      credentials_file_json: "{{ credentials_file }}"
+      provider: "{{ provider }}"
+      public_ip: "{{ item.public_ip }}"
+      public_dns: "{{ item.public_ip }}"
+      private_ip: "{{ item.private_ip }}"
+      machine_type_node: "{{ machine_type_node }}"
+    with_items: "{{ gce_node.instance_data }}"
+
+
+- name: "Configura Hosts seguindo roles... {{ hostvars['localhost']['chave_ssh_gce'] }} "
+  vars:
+   ansible_ssh_private_key_file: "{{ hostvars['localhost']['chave_ssh_gce'] }}"
+   credentials_file: "{{ hostvars['localhost']['credentials_file_json'] }}"
+   public_ip: "{{ hostvars['localhost']['public_ip'] }}"
+   public_dns: "{{ hostvars['localhost']['public_dns'] }}"
+   private_ip: "{{ hostvars['localhost']['private_ip'] }}"
+   provider: "{{ hostvars['localhost']['provider'] }}"
+   machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
+   remote_user: "{{ hostvars['localhost']['usuario_ssh_gce'] }}"
+   conteudo_json: "{{ lookup(\"file\", \"{{ hostvars['localhost']['credentials_file_json'] }}\") }}"
+  hosts: gce_instances_ips
+  become: yes
+  become_method: sudo
+  remote_user: "{{ hostvars['localhost']['usuario_ssh_gce'] }}"
+  roles:
+    - postinstall-hostpreparation

@@ -7,7 +7,7 @@ etcd
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
 # SSH user, this user should allow ssh based auth without requiring a password
-ansible_ssh_user=centos
+ansible_ssh_user={{ remote_user }}
 os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
 openshift_master_cluster_hostname={{ public_dns }}
 openshift_master_cluster_public_hostname={{ public_dns }}
@@ -18,7 +18,7 @@ ansible_become=true
 openshift_deployment_type=origin
 #openshift_master_api_port=443
 #openshift_master_console_port=443
-
+openshift_disable_check=memory_availability
 # uncomment the following to enable htpasswd authentication; defaults to AllowAllPasswordIdentityProvider
 #openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
 

@@ -12,14 +12,14 @@
     master_private_ip: ""
     infranode_private_ip: ""
     node1_private_ip: ""
-
+    image: ami-cb5803a7
   tasks:
 
   - name: Carregando variaveis de config.yml
     include_vars: config.yml
 
 
-  - name: Cria Instancia Instrutor
+  - name: Cria Instancia AllInOne
     ec2:
          aws_access_key: "{{ aws_access_key }}"
          aws_secret_key: "{{ aws_secret_key }}"
@@ -102,6 +102,7 @@
    private_ip: "{{ hostvars['localhost']['private_ip'] }}"
    provider: "{{ hostvars['localhost']['provider'] }}"
    machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
+   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws'] }}"
   hosts: aws_instances_ips
   become: yes
   gather_facts: false

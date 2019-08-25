@@ -38,68 +38,85 @@
 
 - name: Clona Git Ansible Installer
   shell: "git clone https://github.com/openshift/openshift-ansible && cd openshift-ansible && git checkout release-3.11"
+  ignore_errors: yes
 
 - name: Clona utilitarios ansible
   shell: "git clone https://github.com/redhatbsb/ocp-playbooks.git"
+  ignore_errors: yes
 
-- name: "Troca device do docker t2 {{ machine_type_node }}"
+- name: "Cria diretorio /home/{{ remote_user }}"
+  file:
+    path: "/home/{{ remote_user }}"
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0755
+  
+
+- name: Troca device do docker AWS t2
   lineinfile:
-   path: /home/centos/ocp-playbooks/openshift/docker-storage-setup
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
    regexp: "^DEVS="
    line: "DEVS=/dev/xvdb"
   when: machine_type_node == "t2.2xlarge"
 
-- name: Troca device do docker t3
+- name: Troca device do docker AWS t3
   lineinfile:
-   path: /home/centos/ocp-playbooks/openshift/docker-storage-setup
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
    regexp: "^DEVS="
    line: "DEVS=/dev/nvme1n1"
   when: machine_type_node == "t3.2xlarge"
 
+- name: Troca device do docker para GCE
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/sdb"
+  when: machine_type_node == "n1-standard-4"
+
 
 - name: Copia chave
   copy:
-   src: /home/luciano/tf/aws/aws2.pem
-   dest: /home/centos/.ssh/id_rsa
-   owner: centos
+   src: "{{ ansible_ssh_private_key_file }}"
+   dest: "/home/{{ remote_user }}/.ssh/id_rsa"
+   owner: "{{ remote_user }}"
    mode: 0400
 
 - name: Cria diretorio /etc/ansible
   file:
     path: /etc/ansible
     state: directory
-    owner: centos
+    owner: "{{ remote_user }}"
     mode: 0755
 
 - name: Copia hosts
   template:
     src: "{{ role_path }}/files/hosts.j2" 
     dest: /etc/ansible/hosts
-    owner: centos
+    owner: "{{ remote_user }}"
 
 - name: Copia ansible.cfg
   copy:
    src: "{{ role_path }}/files/ansible.cfg"
    dest: /etc/ansible/ansible.cfg
-   owner: centos
+   owner: "{{ remote_user }}"
 
 - name: Instala docker
-  shell: "cd /home/centos/ocp-playbooks/openshift/ && ansible-playbook /home/centos/ocp-playbooks/openshift/04-docker.yaml"
+  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
   become: no
 
 - name: Roda Prerequisitos
-  shell: "cd /home/centos/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
+  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
   become: no
 
 - name: Instala Openshift
-  shell: "cd /home/centos/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
+  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
   become: no
 
 - name: Cria diretorios para PVs
   file:
     path: /exports/pvs
     state: directory
-    owner: centos
+    owner: "{{ remote_user }}"
     mode: 0777  
 
 - name: Cria exports
