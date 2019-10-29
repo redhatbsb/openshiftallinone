@@ -116,11 +116,11 @@
   become: no
 
 - name: Roda Prerequisitos
-  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
+  shell: "cd /usr/share/ansible/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
   become: no
 
 - name: Instala Openshift
-  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
+  shell: "cd /usr/share/ansible/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
   become: no
 
 - name: Cria diretorios para PVs
