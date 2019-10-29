@@ -12,7 +12,7 @@
     master_private_ip: ""
     infranode_private_ip: ""
     node1_private_ip: ""
-    image: ami-cb5803a7
+    image: ami-595ce844
   tasks:
 
   - name: Carregando variaveis de config.yml
@@ -120,21 +120,27 @@
       chave_ssh: "{{ chave_ssh }}"
       usuario_ssh_aws: "{{ usuario_ssh_aws }}"
       machine_type_node: "{{ machine_type_node }}"
+      user: "{{ user }}"
+      password: "{{ password }}"
+      poolid: "{{ poolid }}"
 
 
 - name: "Configura Hosts seguindo roles... {{ hostvars['localhost']['chave_ssh'] }} "
   vars:
    ansible_ssh_private_key_file: "{{ hostvars['localhost']['chave_ssh'] }}"
+   user: "{{ hostvars['localhost']['user'] }}"
+   password: "{{ hostvars['localhost']['password'] }}"
+   poolid: "{{ hostvars['localhost']['poolid'] }}"
    public_ip: "{{ hostvars['localhost']['public_ip'] }}"
    public_dns: "{{ hostvars['localhost']['public_dns'] }}"
    private_ip: "{{ hostvars['localhost']['private_ip'] }}"
    provider: "{{ hostvars['localhost']['provider'] }}"
    machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
-   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws'] }}"
+   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
   hosts: aws_instances_ips
   become: yes
   gather_facts: false
   become_method: sudo
-  remote_user: "{{ hostvars['localhost']['usuario_ssh_aws'] }}"
+  remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
   roles:
-    - postinstall-hostpreparation
+    - postinstall-hostpreparation-rhel

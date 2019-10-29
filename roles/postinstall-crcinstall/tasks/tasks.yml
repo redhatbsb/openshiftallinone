@@ -1,0 +1,33 @@
+- name: Install libvirt
+  yum:
+   name: "{{ item }}"
+   state: latest
+  with_items:
+   - qemu-kvm 
+   - qemu-img 
+   - virt-manager 
+   - libvirt 
+   - libvirt-python 
+   - libvirt-client 
+   - virt-install 
+   - virt-viewer 
+   - bridge-utils
+
+- name: Inicia e habilita libvirtd
+  service:
+   name: libvirtd
+   state: started
+   enabled: yes
+
+- name: Download crc setup
+  get_url:
+    url: https://mirror.openshift.com/pub/openshift-v4/clients/crc/latest/crc-linux-amd64.tar.xz
+    dest: /tmp/crc-linux-amd64.tar.xz
+    mode: '0755'
+
+- name: Extraindo crc
+  unarchive:
+    src: /tmp/crc-linux-amd64.tar.xz
+    dest: /tmp/crc
+
+

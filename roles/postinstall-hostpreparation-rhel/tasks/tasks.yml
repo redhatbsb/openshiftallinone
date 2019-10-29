@@ -1,0 +1,178 @@
+- name: Limpa subscricao
+  shell: "subscription-manager unregister"
+  ignore_errors: yes
+
+- name: Subscreve
+  shell: "subscription-manager register  --username={{ user }} --password={{ password }}"
+
+- name: Refresh
+  shell: "subscription-manager refresh"
+    
+- name: Anexa pool
+  shell: "subscription-manager attach --pool={{ poolid }}"
+
+- name: Desabilita repos
+  shell: subscription-manager repos --disable="*"
+
+- name: Certifica yum repolist vazio
+  shell:  yum-config-manager --disable \*
+
+- name: Habilita repos
+  shell: subscription-manager repos --enable="rhel-7-server-rpms" --enable="rhel-7-server-extras-rpms" --enable="rhel-7-server-ose-3.11-rpms" --enable="rhel-7-server-ansible-2.6-rpms"
+
+- name:  Instala pacotes necessários
+  yum:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - wget 
+    - git 
+    - net-tools 
+    - bind-utils 
+    - yum-utils 
+    - iptables-services 
+    - bridge-utils 
+    - bash-completion 
+    - kexec-tools 
+    - sos 
+    - psacct
+    - NetworkManager
+    - centos-release-openshift-origin311
+    - nfs-utils
+
+- name: Habilita network manager
+  service:
+   name: NetworkManager
+   state: started
+   enabled: yes
+
+- name: Instala Ansible
+  yum:
+   name: ansible
+   state: latest
+
+- name: Clona utilitarios ansible
+  shell: "git clone https://github.com/redhatbsb/ocp-playbooks.git"
+  ignore_errors: yes
+
+- name: "Cria diretorio /home/{{ remote_user }}"
+  file:
+    path: "/home/{{ remote_user }}"
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0755
+  
+
+- name: Troca device do docker AWS t2
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/xvdb"
+  when: machine_type_node == "t2.2xlarge"
+
+- name: Troca device do docker AWS t3
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/nvme1n1"
+  when: machine_type_node == "t3.2xlarge"
+
+- name: Troca device do docker para GCE
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/sdb"
+  when: machine_type_node == "n1-standard-8"
+
+
+- name: Copia chave
+  copy:
+   src: "{{ ansible_ssh_private_key_file }}"
+   dest: "/home/{{ remote_user }}/.ssh/id_rsa"
+   owner: "{{ remote_user }}"
+   mode: 0400
+
+- name: Cria diretorio /etc/ansible
+  file:
+    path: /etc/ansible
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0755
+
+- name: Copia hosts
+  template:
+    src: "{{ role_path }}/files/hosts.j2" 
+    dest: /etc/ansible/hosts
+    owner: "{{ remote_user }}"
+
+- name: Copia ansible.cfg
+  copy:
+   src: "{{ role_path }}/files/ansible.cfg"
+   dest: /etc/ansible/ansible.cfg
+   owner: "{{ remote_user }}"
+
+- name: Instala docker
+  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
+  become: no
+
+- name: Roda Prerequisitos
+  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
+  become: no
+
+- name: Instala Openshift
+  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/deploy_cluster.yml"
+  become: no
+
+- name: Cria diretorios para PVs
+  file:
+    path: /exports/pvs
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0777  
+
+- name: Cria exports
+  copy:
+    content: '/exports *(rw,sync,no_root_squash,no_all_squash)'
+    dest: /etc/exports
+
+- name: Inicia e restarta servicos
+  service:
+   name: "{{ item }}"
+   state: started
+   enabled: yes
+  with_items:
+    - rpcbind
+    - nfs-server
+    - nfs-lock
+    - nfs-idmap
+
+- name: Cria regras de firewall
+  firewalld:
+    zone: public
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+  with_items:
+    - nfs
+    - mountd
+    - rpc-bind
+
+- name: Cria 50 PVs files baseados no template
+  template:
+    src: "{{ role_path }}/files/pvnfs.j2"
+    dest: "/exports/{{ item }}.yaml"
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Cria 50 dirs para PVs
+  file:
+    path: "/exports/pvs/{{ item }}"
+    state: directory
+    mode: 0777
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Cria os 50 Pvs
+  shell: "oc create -f /exports/{{ item }}.yaml"
+  with_sequence: start=0 end=50 stride=1 format=pv%003d
+
+- name: Deixa superadmin como cluster-admin
+  shell: "oc adm policy add-cluster-role-to-user cluster-admin superadmin"
