@@ -35,7 +35,7 @@
          region: "{{ region }}"
          vpc_subnet_id: "{{ aws_subnet_id }}"
          instance_tags:
-          Name: OpenshiftAllInOne
+          Name: OpenshiftAllInOne-Node
          assign_public_ip: yes
          volumes:
           - device_name: /dev/sda1
@@ -91,6 +91,11 @@
       hostname: "{{ public_ip }}"
       groupname: aws_instances_ips
 
+  - name: Salva dados no grupo de inventario para master
+    add_host:
+      hostname: "{{ public_dns_master }}"
+      groupname: master_host
+
   - name: Grava IP da instancia na variavel ip_publico
     set_fact:
       ip_publico: "{{ item.public_dns_name }}"
@@ -102,7 +107,7 @@
       host: "{{ public_ip }}"
       port: 22
       state: started
-      timeout: 60
+      timeout: 120
 
   - name: "Seta variaveis para proximos passos, incluindo o endereco {{ ip_publico }}"
     set_fact:
@@ -114,6 +119,7 @@
       poolid: "{{ poolid }}"
       oreg_auth_user: "{{ oreg_auth_user }}"
       oreg_auth_password: "{{ oreg_auth_password }}"
+      public_dns_master: "{{ public_dns_master }}"
 
 
   - name: Aguardando 15s para rhel ajustar acessos
@@ -156,7 +162,7 @@
    provider: "{{ hostvars['localhost']['provider'] }}"
    machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
    remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
-  hosts: aws_instances_ips
+  hosts: master_host
   become: yes
   gather_facts: false
   become_method: sudo

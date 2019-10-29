@@ -10,6 +10,10 @@
    dest: /etc/ansible/ansible.cfg
    owner: "{{ remote_user }}"
 
+- name: Instala docker
+  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook -i /etc/ansible/hosts-scaleup /home/{{ remote_user }}/ocp-playbooks/openshift/docker-scaleup.yaml -l new_nodes"
+  become: no
+
 - name: Roda Scaleup
   shell: "cd /usr/share/ansible/openshift-ansible/ && ansible-playbook -i /etc/ansible/hosts-scaleup playbooks/openshift-node/scaleup.yml"
   become: no

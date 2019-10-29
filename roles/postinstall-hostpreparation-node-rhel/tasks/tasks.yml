@@ -105,8 +105,8 @@
    dest: /etc/ansible/ansible.cfg
    owner: "{{ remote_user }}"
 
-- name: Instala docker
-  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
-  become: no
+#- name: Instala docker
+#  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
+#  become: no
 
 
