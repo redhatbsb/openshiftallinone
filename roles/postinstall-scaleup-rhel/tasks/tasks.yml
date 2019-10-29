@@ -1,0 +1,15 @@
+- name: Copia scaleup inv
+  template:
+    src: "{{ role_path }}/files/scale-up-rhel.j2" 
+    dest: /etc/ansible/hosts-scaleup
+    owner: "{{ remote_user }}"
+
+- name: Copia ansible.cfg
+  copy:
+   src: "{{ role_path }}/files/ansible.cfg"
+   dest: /etc/ansible/ansible.cfg
+   owner: "{{ remote_user }}"
+
+- name: Roda Scaleup
+  shell: "cd /usr/share/ansible/openshift-ansible/ && ansible-playbook -i /etc/ansible/hosts-scaleup playbooks/openshift-node/scaleup.yml"
+  become: no

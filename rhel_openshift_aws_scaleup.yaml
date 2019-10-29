@@ -1,9 +1,13 @@
-- name: Cria instancia AWS com Openshift All-In-One
+- name: Adiciona node em cluster AllInOne
   hosts: localhost
   connection: local
   gather_facts: false
+  vars_prompt:
+    - name: public_dns_master
+      prompt: "DNS publico da master"
+      private: no
   vars:
-    machine_type_node: t2.2xlarge
+    machine_type_node: t2.large
     region: sa-east-1
     preemptible: true
     tamanho_disco_pequeno: 40
@@ -19,7 +23,7 @@
     include_vars: config.yml
 
 
-  - name: Cria Instancia AllInOne
+  - name: Cria node para cluster AllInOne
     ec2:
          aws_access_key: "{{ aws_access_key }}"
          aws_secret_key: "{{ aws_secret_key }}"
@@ -43,21 +47,12 @@
     register: ec2
 
 
-  - name: Busca dados para Prover Elastic IP
+  - name: Busca dados da instancia
     set_fact:
       private_ip: "{{ item.private_ip }}"
       public_ip: "{{ item.public_ip }}"
       public_dns: "{{ item.public_dns_name }}"
     with_items: "{{ ec2.instances }}"
-
-  - name: Associa novo IP ao Cluster
-    ec2_eip:
-      device_id: "{{ item }}"
-      private_ip_address: "{{ private_ip }}"
-      region: "{{ region }}"
-    loop: "{{ ec2.instance_ids }}"
-    register: eip
-
 
 
   - name: Obtem novamente os fatos da instancia
@@ -67,17 +62,11 @@
     register: ec2a
 
   
-
-  - debug: var=ec2a
-
   - name: Seta Ip Privado
     set_fact:
       private_ip: "{{ ec2a.instances[0].private_ip_address }}"
       public_ip: "{{ ec2a.instances[0].public_ip_address }}"
       public_dns: "{{ ec2a.instances[0].public_dns_name }}"
-
-  - set_fact:
-      public_ip: "{{ eip.results[0].public_ip }}"
 
   - name: Cria regras de firewall
     ec2_group:
@@ -113,7 +102,7 @@
       host: "{{ public_ip }}"
       port: 22
       state: started
-      timeout: 120
+      timeout: 60
 
   - name: "Seta variaveis para proximos passos, incluindo o endereco {{ ip_publico }}"
     set_fact:
@@ -125,6 +114,7 @@
       poolid: "{{ poolid }}"
       oreg_auth_user: "{{ oreg_auth_user }}"
       oreg_auth_password: "{{ oreg_auth_password }}"
+
 
   - name: Aguardando 15s para rhel ajustar acessos
     pause:
@@ -150,4 +140,27 @@
   become_method: sudo
   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
   roles:
-    - postinstall-hostpreparation-rhel
+    - postinstall-hostpreparation-node-rhel
+
+- name: "Escalando cluster "
+  vars:
+   ansible_ssh_private_key_file: "{{ hostvars['localhost']['chave_ssh'] }}"
+   user: "{{ hostvars['localhost']['user'] }}"
+   password: "{{ hostvars['localhost']['password'] }}"
+   poolid: "{{ hostvars['localhost']['poolid'] }}"
+   oreg_auth_user: "{{ hostvars['localhost']['oreg_auth_user'] }}"
+   oreg_auth_password: "{{ hostvars['localhost']['oreg_auth_password'] }}"
+   public_ip: "{{ hostvars['localhost']['public_ip'] }}"
+   public_dns: "{{ hostvars['localhost']['public_dns_master'] }}"
+   private_ip: "{{ hostvars['localhost']['private_ip'] }}"
+   provider: "{{ hostvars['localhost']['provider'] }}"
+   machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
+   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
+  hosts: aws_instances_ips
+  become: yes
+  gather_facts: false
+  become_method: sudo
+  remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
+  roles:
+    - postinstall-scaleup-rhel
+
