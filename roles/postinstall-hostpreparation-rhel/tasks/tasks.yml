@@ -14,8 +14,8 @@
 - name: Desabilita repos
   shell: subscription-manager repos --disable="*"
 
-- name: Certifica yum repolist vazio
-  shell:  yum-config-manager --disable \*
+#- name: Certifica yum repolist vazio
+#  shell:  yum-config-manager --disable \*
 
 - name: Habilita repos
   shell: subscription-manager repos --enable="rhel-7-server-rpms" --enable="rhel-7-server-extras-rpms" --enable="rhel-7-server-ose-3.11-rpms" --enable="rhel-7-server-ansible-2.6-rpms"
@@ -36,19 +36,19 @@
     - kexec-tools 
     - sos 
     - psacct
-    - NetworkManager
-    - centos-release-openshift-origin311
     - nfs-utils
 
-- name: Habilita network manager
-  service:
-   name: NetworkManager
-   state: started
-   enabled: yes
-
-- name: Instala Ansible
+- name: Atualiza todos os pacotes
   yum:
-   name: ansible
+    name: "*"
+    state: latest
+
+- name: Reboot...
+  reboot:
+
+- name: Instala Openshift Ansible
+  yum:
+   name: openshift-ansible
    state: latest
 
 - name: Clona utilitarios ansible
@@ -101,7 +101,7 @@
 
 - name: Copia hosts
   template:
-    src: "{{ role_path }}/files/hosts.j2" 
+    src: "{{ role_path }}/files/hosts-enterprise.j2" 
     dest: /etc/ansible/hosts
     owner: "{{ remote_user }}"
 

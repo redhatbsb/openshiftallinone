@@ -12,7 +12,7 @@
     master_private_ip: ""
     infranode_private_ip: ""
     node1_private_ip: ""
-    image: ami-595ce844
+    image: ami-06efd558d6a5fb959
   tasks:
 
   - name: Carregando variaveis de config.yml
@@ -124,6 +124,9 @@
       password: "{{ password }}"
       poolid: "{{ poolid }}"
 
+  - name: Aguardando 15s para rhel ajustar acessos
+    pause:
+      seconds: 15
 
 - name: "Configura Hosts seguindo roles... {{ hostvars['localhost']['chave_ssh'] }} "
   vars:
