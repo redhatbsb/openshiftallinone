@@ -135,7 +135,7 @@
    oreg_auth_user: "{{ hostvars['localhost']['oreg_auth_user'] }}"
    oreg_auth_password: "{{ hostvars['localhost']['oreg_auth_password'] }}"
    public_ip: "{{ hostvars['localhost']['public_ip'] }}"
-   public_dns: "{{ hostvars['localhost']['public_dns'] }}"
+   public_dns: "{{ hostvars['localhost']['public_dns_master'] }}"
    private_ip: "{{ hostvars['localhost']['private_ip'] }}"
    provider: "{{ hostvars['localhost']['provider'] }}"
    machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
@@ -147,26 +147,4 @@
   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
   roles:
     - postinstall-hostpreparation-node-rhel
-
-- name: "Escalando cluster "
-  vars:
-   ansible_ssh_private_key_file: "{{ hostvars['localhost']['chave_ssh'] }}"
-   user: "{{ hostvars['localhost']['user'] }}"
-   password: "{{ hostvars['localhost']['password'] }}"
-   poolid: "{{ hostvars['localhost']['poolid'] }}"
-   oreg_auth_user: "{{ hostvars['localhost']['oreg_auth_user'] }}"
-   oreg_auth_password: "{{ hostvars['localhost']['oreg_auth_password'] }}"
-   public_ip: "{{ hostvars['localhost']['public_ip'] }}"
-   public_dns: "{{ hostvars['localhost']['public_dns_master'] }}"
-   private_ip: "{{ hostvars['localhost']['private_ip'] }}"
-   provider: "{{ hostvars['localhost']['provider'] }}"
-   machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
-   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
-  hosts: master_host
-  become: yes
-  gather_facts: false
-  become_method: sudo
-  remote_user: "{{ hostvars['localhost']['usuario_ssh_aws_rhel'] }}"
-  roles:
-    - postinstall-scaleup-rhel
 

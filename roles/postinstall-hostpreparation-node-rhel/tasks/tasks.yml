@@ -63,14 +63,23 @@
     mode: 0755
   
 
-- name: Troca device do docker AWS t2
+- name: Troca device do docker AWS t2.2xlarge
   lineinfile:
    path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
    regexp: "^DEVS="
    line: "DEVS=/dev/xvdb"
   when: machine_type_node == "t2.2xlarge"
 
-- name: Troca device do docker AWS t3
+- name: Troca device do docker AWS t2.large
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/xvdb"
+  when: machine_type_node == "t2.large"
+
+
+
+- name: Troca device do docker AWS t3.2xlarge
   lineinfile:
    path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
    regexp: "^DEVS="
@@ -99,14 +108,23 @@
     owner: "{{ remote_user }}"
     mode: 0755
 
+- name: Copia hosts
+  template:
+    src: "{{ role_path }}/files/scale-up-rhel.j2" 
+    dest: /etc/ansible/hosts
+    owner: "{{ remote_user }}"
+
 - name: Copia ansible.cfg
   copy:
    src: "{{ role_path }}/files/ansible.cfg"
    dest: /etc/ansible/ansible.cfg
    owner: "{{ remote_user }}"
 
-#- name: Instala docker
-#  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
-#  become: no
+- name: Instala docker
+  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/docker-scaleup.yaml"
+  become: no
 
+- name: Faz join no cluster
+  shell: "cd /usr/share/ansible/openshift-ansible/ && ansible-playbook playbooks/openshift-node/scaleup.yml"
+  become: no
 
