@@ -1,5 +1,5 @@
 # Openshift All in One
-Sobe uma instancia Openshift All-In-One na AWS em 25 min.  
+Sobe uma instancia Openshift All-In-One na AWS em 25 min (OKD) e Rhel com Elastic IP em 1h.  
 
 # Exemplo de config.yml
 \# ========================  
