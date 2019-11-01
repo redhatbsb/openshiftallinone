@@ -12,7 +12,8 @@
     master_private_ip: ""
     infranode_private_ip: ""
     node1_private_ip: ""
-    image: ami-06efd558d6a5fb959
+#    image: ami-06efd558d6a5fb959
+    image: ami-048b2348ac2ccfc53
   tasks:
 
   - name: Carregando variaveis de config.yml
@@ -31,7 +32,7 @@
          region: "{{ region }}"
          vpc_subnet_id: "{{ aws_subnet_id }}"
          instance_tags:
-          Name: OpenshiftAllInOne
+          Name: OpenshiftAllInOne-2
          assign_public_ip: yes
          volumes:
           - device_name: /dev/sda1

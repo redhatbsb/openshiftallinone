@@ -6,6 +6,11 @@
     - name: public_dns_master
       prompt: "DNS publico da master"
       private: no
+    - name: private_dns_master
+      prompt: "DNS privado da master"
+      private: no
+
+
   vars:
     machine_type_node: t2.large
     region: sa-east-1
@@ -120,6 +125,7 @@
       oreg_auth_user: "{{ oreg_auth_user }}"
       oreg_auth_password: "{{ oreg_auth_password }}"
       public_dns_master: "{{ public_dns_master }}"
+      private_dns_master: "{{ private_dns_master }}"
 
 
   - name: Aguardando 15s para rhel ajustar acessos
@@ -136,6 +142,7 @@
    oreg_auth_password: "{{ hostvars['localhost']['oreg_auth_password'] }}"
    public_ip: "{{ hostvars['localhost']['public_ip'] }}"
    public_dns: "{{ hostvars['localhost']['public_dns_master'] }}"
+   private_dns_master: "{{ hostvars['localhost']['private_dns_master'] }}"
    private_ip: "{{ hostvars['localhost']['private_ip'] }}"
    provider: "{{ hostvars['localhost']['provider'] }}"
    machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"

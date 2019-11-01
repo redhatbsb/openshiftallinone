@@ -11,7 +11,7 @@ new_nodes
 ansible_ssh_user={{ remote_user }}
 ansible_connection=local
 os_sdn_network_plugin_name='redhat/openshift-ovs-networkpolicy'
-openshift_master_cluster_hostname={{ public_dns }}
+openshift_master_cluster_hostname={{ private_dns_master }}
 openshift_master_cluster_public_hostname={{ public_dns }}
 openshift_master_default_subdomain={{ public_ip }}.nip.io
 
@@ -48,13 +48,13 @@ openshift_hosted_registry_storage_volume_size=10Gi
 
 # host group for masters
 [masters]
-{{ public_dns }}
+{{ private_dns_master }}
 # host group for etcd
 [etcd]
-{{ public_dns }}
+{{ private_dns_master }}
 # host group for nodes, includes region info
 [nodes]
-{{ public_dns }} openshift_node_group_name='node-config-master'
+{{ private_dns_master }} openshift_node_group_name='node-config-master'
 #
 [new_nodes]
 {{ private_ip }} openshift_node_group_name='node-config-compute'

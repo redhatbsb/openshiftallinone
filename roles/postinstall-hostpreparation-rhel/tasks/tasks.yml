@@ -187,3 +187,18 @@
   service:
    name: nfs-server
    state: restarted
+
+- name: Muda permissao de /etc/origin
+  file:
+   path: /etc/origin
+   owner: ec2-user
+
+- name: Muda permissao de /etc/origin/master
+  file:
+   path: /etc/origin/master
+   owner: ec2-user
+
+- name: Muda permissao de /etc/origin/master/bootstrap.kubeconfig
+  file:
+   path: /etc/origin/master/bootstrap.kubeconfig
+   owner: ec2-user
