@@ -2,7 +2,7 @@
 Sobe uma instancia Openshift All-In-One na AWS em 25 min.  
 
 # Exemplo de config.yml
-\# ========================
+\# ========================  
 \# Configuracoes essenciais  
 provider: aws  
 \# ========================  
@@ -30,7 +30,7 @@ usuario_ssh_aws_rhel: ec2-user
 chave_ssh: /home/user/path/to/private_key    
 id_instancia_aws: "AllInOne"  
  
-\# ======================== 
+\# ========================  
 \# Configuracoes Subscricao  
 \# ========================  
 user: userrhn  
