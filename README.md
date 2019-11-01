@@ -3,9 +3,10 @@ Sobe uma instancia Openshift All-In-One na AWS em 25 min.
 
 # Exemplo de config.yml
 \# ========================
-\# Configuracoes essenciais
+\# Configuracoes essenciais  
 provider: aws  
-
+\# ========================  
+  
 \# ========================  
 \# Configuracoes GCE  
 \# ========================  
