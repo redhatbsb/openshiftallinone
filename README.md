@@ -1,23 +1,24 @@
 # Openshift All in One
-Sobe uma instancia Openshift All-In-One na AWS em 25 min.  
+Sobe uma instancia Openshift All-In-One na AWS em 25 min (OKD) e Rhel com Elastic IP em 1h.  
 
 # Exemplo de config.yml
-# ========================
-# Configuracoes essenciais
+\# ========================  
+\# Configuracoes essenciais  
 provider: aws  
-
-# ========================  
-# Configuracoes GCE  
-# ========================  
-#  
+\# ========================  
+  
+\# ========================  
+\# Configuracoes GCE  
+\# ========================  
+\#  
 credentials_file: /home/user/path/to/service.json  
 chave_ssh_gce: /home/user/path/to/ssh_private_key
 usuario_ssh_gce: user
-# 
+ 
   
-# ========================  
-# Configuracoes AWS  
-# ========================  
+\# ========================  
+\# Configuracoes AWS  
+\# ========================  
 aws_access_key: ASDASDASAASDA  
 aws_secret_key: basdasdasdsadas    
 aws_vpc_network: vpc-xyz  
@@ -29,9 +30,9 @@ usuario_ssh_aws_rhel: ec2-user
 chave_ssh: /home/user/path/to/private_key    
 id_instancia_aws: "AllInOne"  
  
-# ======================== 
-# Configuracoes Subscricao  
-# ========================  
+\# ========================  
+\# Configuracoes Subscricao  
+\# ========================  
 user: userrhn  
 password: passrhn  
 poolid: 8a85f9996b498098ds90a  
