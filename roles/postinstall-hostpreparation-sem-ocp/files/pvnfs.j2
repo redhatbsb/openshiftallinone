@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ item }}
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+  - ReadWriteOnce
+  - ReadWriteMany
+  - ReadOnlyMany
+  nfs:
+    path: /exports/pvs/{{ item }}
+    server: {{ private_ip }}
+  persistentVolumeReclaimPolicy: Recycle

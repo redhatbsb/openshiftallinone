@@ -1,0 +1,140 @@
+- name: Cria instancia AWS com Openshift All-In-One
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    machine_type_node: t2.2xlarge
+    region: sa-east-1
+    preemptible: true
+    tamanho_disco_pequeno: 40
+    tamanho_disco_grande: 50
+    tamanho_disco_adicional: 50
+    master_private_ip: ""
+    infranode_private_ip: ""
+    node1_private_ip: ""
+    image: ami-cb5803a7
+  tasks:
+
+  - name: Carregando variaveis de config.yml
+    include_vars: config.yml
+
+
+  - name: Cria Instancia AllInOne
+    ec2:
+         aws_access_key: "{{ aws_access_key }}"
+         aws_secret_key: "{{ aws_secret_key }}"
+         key_name: "{{ aws_key_name }}"
+         group: "default"
+         instance_type: "{{ machine_type_node }}"
+         image: "{{ image }}"
+         wait: true
+         region: "{{ region }}"
+         vpc_subnet_id: "{{ aws_subnet_id }}"
+         instance_tags:
+          Name: OpenshiftAllInOne
+         assign_public_ip: yes
+         volumes:
+          - device_name: /dev/sda1
+            volume_type: gp2
+            volume_size: 40
+          - device_name: /dev/sdb
+            volume_type: gp2
+            volume_size: 100
+    register: ec2
+
+
+  - name: Busca dados para Prover Elastic IP
+    set_fact:
+      private_ip: "{{ item.private_ip }}"
+      public_ip: "{{ item.public_ip }}"
+      public_dns: "{{ item.public_dns_name }}"
+    with_items: "{{ ec2.instances }}"
+
+  - name: Associa novo IP ao Cluster
+    ec2_eip:
+      device_id: "{{ item }}"
+      private_ip_address: "{{ private_ip }}"
+      region: "{{ region }}"
+    loop: "{{ ec2.instance_ids }}"
+    register: eip
+
+
+
+  - name: Obtem novamente os fatos da instancia
+    ec2_instance_facts:
+      instance_ids: "{{ ec2.instances[0].id }}"
+      region: "{{ region }}"
+    register: ec2a
+
+  
+
+  - debug: var=ec2a
+
+  - name: Seta Ip Privado
+    set_fact:
+      private_ip: "{{ ec2a.instances[0].private_ip_address }}"
+      public_ip: "{{ ec2a.instances[0].public_ip_address }}"
+      public_dns: "{{ ec2a.instances[0].public_dns_name }}"
+
+  - set_fact:
+      public_ip: "{{ eip.results[0].public_ip }}"
+
+  - name: Cria regras de firewall
+    ec2_group:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      name: regrasopenshift
+      description: "Regras para Openshift"
+      vpc_id: "{{ aws_vpc_network }}"
+      region: "{{ region }}"
+      rules:
+       - proto: tcp
+         ports:
+          - 22
+          - 80
+          - 443
+          - 8443
+         cidr_ip: 0.0.0.0/0
+
+
+  - name: Salva dados no grupo de inventario... usuario
+    add_host:
+      hostname: "{{ public_ip }}"
+      groupname: aws_instances_ips
+
+  - name: Grava IP da instancia na variavel ip_publico
+    set_fact:
+      ip_publico: "{{ item.public_dns_name }}"
+    with_items: "{{ ec2a.instances }}"
+
+  - name: Espera por SSH habilitado...
+    wait_for:
+      delay: 1
+      host: "{{ public_ip }}"
+      port: 22
+      state: started
+      timeout: 60
+
+  - name: "Seta variaveis para proximos passos, incluindo o endereco {{ ip_publico }}"
+    set_fact:
+      chave_ssh: "{{ chave_ssh }}"
+      usuario_ssh_aws: "{{ usuario_ssh_aws }}"
+      machine_type_node: "{{ machine_type_node }}"
+
+
+- name: "Configura Hosts seguindo roles... {{ hostvars['localhost']['chave_ssh'] }} "
+  vars:
+   ansible_ssh_private_key_file: "{{ hostvars['localhost']['chave_ssh'] }}"
+   public_ip: "{{ hostvars['localhost']['public_ip'] }}"
+   public_dns: "{{ hostvars['localhost']['public_dns'] }}"
+   private_ip: "{{ hostvars['localhost']['private_ip'] }}"
+   provider: "{{ hostvars['localhost']['provider'] }}"
+   machine_type_node: "{{ hostvars['localhost']['machine_type_node'] }}"
+   remote_user: "{{ hostvars['localhost']['usuario_ssh_aws'] }}"
+  hosts: aws_instances_ips
+  become: yes
+  gather_facts: false
+  become_method: sudo
+  remote_user: "{{ hostvars['localhost']['usuario_ssh_aws'] }}"
+  roles:
+    - postinstall-hostpreparation-sem-ocp

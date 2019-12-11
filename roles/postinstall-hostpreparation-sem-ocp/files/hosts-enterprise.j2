@@ -1,0 +1,60 @@
+# Create an OSEv3 group that contains the masters, nodes, and etcd groups
+[OSEv3:children]
+masters
+nodes
+etcd
+nfs
+
+# Set variables common for all OSEv3 hosts
+[OSEv3:vars]
+# SSH user, this user should allow ssh based auth without requiring a password
+ansible_ssh_user={{ remote_user }}
+ansible_connection=local
+os_sdn_network_plugin_name='redhat/openshift-ovs-networkpolicy'
+openshift_master_cluster_hostname={{ public_dns }}
+openshift_master_cluster_public_hostname={{ public_dns }}
+openshift_master_default_subdomain={{ public_ip }}.nip.io
+
+# If ansible_ssh_user is not root, ansible_become must be set to true
+ansible_become=true
+openshift_deployment_type=openshift-enterprise
+
+oreg_url=registry.redhat.io/openshift3/ose-${component}:${version}
+oreg_auth_user=12345678|poc-openshift
+oreg_auth_password=mypass
+
+openshift_master_identity_providers=[{'name': 'Local', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
+openshift_master_htpasswd_users={'admin': '$apr1$i9PKI1bA$TnauC/1OZjW/TKVpqxbz21', 'superadmin': '$apr1$i9PKI1bA$TnauC/1OZjW/TKVpqxbz21'}
+openshift_install_examples=true
+openshift_clock_enabled=true
+
+openshift_enable_olm=true
+
+openshift_additional_registry_credentials=[{'host':'registry.connect.redhat.com','user':'1234567|poc-openshift','password':'','test_image':'mongodb/enterprise-operator:0.3.2'}]
+
+#openshift_master_api_port=443
+#openshift_master_console_port=443
+openshift_disable_check=memory_availability,disk_availability,docker_storage,docker_storage_driver
+# uncomment the following to enable htpasswd authentication; defaults to AllowAllPasswordIdentityProvider
+#openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider'}]
+
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_nfs_directory=/exports
+openshift_hosted_registry_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=10Gi
+
+
+# host group for masters
+[masters]
+{{ public_dns }}
+# host group for etcd
+[etcd]
+{{ public_dns }}
+# host group for nodes, includes region info
+[nodes]
+{{ public_dns }} openshift_node_group_name='node-config-all-in-one'
+#
+[nfs]
+{{ private_ip }}

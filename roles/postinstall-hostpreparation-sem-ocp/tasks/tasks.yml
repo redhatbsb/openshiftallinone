@@ -1,0 +1,110 @@
+- name:  Instala pacotes necessários
+  yum:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - wget 
+    - git 
+    - net-tools 
+    - bind-utils 
+    - yum-utils 
+    - iptables-services 
+    - bridge-utils 
+    - bash-completion 
+    - kexec-tools 
+    - sos 
+    - psacct
+    - NetworkManager
+    - centos-release-openshift-origin311
+    - nfs-utils
+
+- name: Habilita network manager
+  service:
+   name: NetworkManager
+   state: started
+   enabled: yes
+
+- name: Instala epel
+  yum:
+    name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    state: present
+
+- name: Instala Ansible
+  yum:
+   name: ansible
+   state: latest
+  #shell: "yum -y --enablerepo=epel install ansible pyOpenSSL"
+ # shell: "sudo yum install -y python-pip python-devel python && sudo pip install --upgrade pip && yum -y remove ansible && sudo pip install ansible==2.7.9"
+
+- name: Clona Git Ansible Installer
+  shell: "git clone https://github.com/openshift/openshift-ansible && cd openshift-ansible && git checkout release-3.11"
+  ignore_errors: yes
+
+- name: Clona utilitarios ansible
+  shell: "git clone https://github.com/redhatbsb/ocp-playbooks.git"
+  ignore_errors: yes
+
+- name: "Cria diretorio /home/{{ remote_user }}"
+  file:
+    path: "/home/{{ remote_user }}"
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0755
+  
+
+- name: Troca device do docker AWS t2
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/xvdb"
+  when: machine_type_node == "t2.2xlarge"
+
+- name: Troca device do docker AWS t3
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/nvme1n1"
+  when: machine_type_node == "t3.2xlarge"
+
+- name: Troca device do docker para GCE
+  lineinfile:
+   path: "/home/{{ remote_user }}/ocp-playbooks/openshift/docker-storage-setup"
+   regexp: "^DEVS="
+   line: "DEVS=/dev/sdb"
+  when: machine_type_node == "n1-standard-8"
+
+
+- name: Copia chave
+  copy:
+   src: "{{ ansible_ssh_private_key_file }}"
+   dest: "/home/{{ remote_user }}/.ssh/id_rsa"
+   owner: "{{ remote_user }}"
+   mode: 0400
+
+- name: Cria diretorio /etc/ansible
+  file:
+    path: /etc/ansible
+    state: directory
+    owner: "{{ remote_user }}"
+    mode: 0755
+
+- name: Copia hosts
+  template:
+    src: "{{ role_path }}/files/hosts.j2" 
+    dest: /etc/ansible/hosts
+    owner: "{{ remote_user }}"
+
+- name: Copia ansible.cfg
+  copy:
+   src: "{{ role_path }}/files/ansible.cfg"
+   dest: /etc/ansible/ansible.cfg
+   owner: "{{ remote_user }}"
+
+- name: Instala docker
+  shell: "cd /home/{{ remote_user }}/ocp-playbooks/openshift/ && ansible-playbook /home/{{ remote_user }}/ocp-playbooks/openshift/04-docker.yaml"
+  become: no
+
+- name: Roda Prerequisitos
+  shell: "cd /home/{{ remote_user }}/openshift-ansible/ && ansible-playbook playbooks/prerequisites.yml"
+  become: no
+
